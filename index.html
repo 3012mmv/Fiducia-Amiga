@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fiducia Amiga - Mis Finanzas Claras</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Chart.js para los Diagramas Visuales -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    </style>
+    <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4f46e5">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 sm:p-6">
+
+    <div class="max-w-4xl mx-auto space-y-6">
+        <!-- HEADER -->
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-4 gap-4">
+            <div>
+                <h1 class="text-xl font-black text-indigo-400">Fiducia Amiga 🚀</h1>
+                <p class="text-xs text-slate-400">Control real de tus bolsillos, deudas a cuotas y metas</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="openCreditModal()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition-all">
+                    + Registrar Crédito / Préstamo
+                </button>
+                <button onclick="openModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition-all">
+                    + Anotar Movimiento
+                </button>
+            </div>
+        </header>
+
+        <!-- ALERTA DE ERROR GLOBAL -->
+        <div id="global-alert" class="hidden bg-rose-500/20 border border-rose-500 text-rose-300 p-3 rounded-xl text-xs font-bold transition-all"></div>
+
+        <!-- PANELES DE DINERO REAL VS DEUDAS -->
+        <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-slate-800 border border-slate-700 p-4 rounded-2xl shadow-sm">
+                <span class="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">Mi Dinero Disponible Real</span>
+                <span id="metric-available" class="text-2xl font-black text-emerald-400 block mt-1">$0</span>
+                <span class="text-[10px] text-slate-500 block mt-1">(Efectivo y Débito libre - Sin ahorros bloqueados)</span>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 p-4 rounded-2xl shadow-sm">
+                <span class="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">Deuda Total en Tarjetas</span>
+                <span id="metric-borrowed" class="text-2xl font-black text-rose-400 block mt-1">$0</span>
+                <span class="text-[10px] text-slate-500 block mt-1">(Cupo usado acumulado por pagar)</span>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 p-4 rounded-2xl shadow-sm">
+                <span class="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">Deuda de Préstamos</span>
+                <span id="metric-loans" class="text-2xl font-black text-amber-400 block mt-1">$0</span>
+                <span class="text-[10px] text-slate-500 block mt-1">(Créditos externos fijos)</span>
+            </div>
+        </section>
+
+        <!-- MENÚ DE PESTAÑAS -->
+        <nav class="bg-slate-800 p-1 rounded-xl flex flex-wrap gap-1 text-xs font-bold">
+            <button onclick="switchTab('pockets')" id="tab-pockets" class="flex-1 min-w-[100px] py-2 text-center rounded-lg bg-indigo-600 text-white">Bolsillos</button>
+            <button onclick="switchTab('summary')" id="tab-summary" class="flex-1 min-w-[100px] py-2 text-center rounded-lg text-slate-400">Tarjetas/Créditos</button>
+            <button onclick="switchTab('goals')" id="tab-goals" class="flex-1 min-w-[100px] py-2 text-center rounded-lg text-slate-400">Ahorros</button>
+            <button onclick="switchTab('history')" id="tab-history" class="flex-1 min-w-[100px] py-2 text-center rounded-lg text-slate-400">Historial</button>
+            <button onclick="switchTab('report')" id="tab-report" class="flex-1 min-w-[100px] py-2 text-center rounded-lg text-slate-400 bg-slate-800 text-indigo-400 border border-indigo-500/20">📊 Reporte Mensual</button>
+        </nav>
+
+        <!-- CONTENEDOR PRINCIPAL -->
+        <main class="bg-slate-800/40 border border-slate-800 rounded-3xl p-6">
+            
+            <!-- PESTAÑA: MIS BOLSILLOS -->
+            <div id="content-pockets" class="space-y-4">
+                <h2 class="text-xs font-black uppercase text-slate-400 mb-2">Mi Dinero Real (No incluye crédito)</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="pockets-list"></div>
+                
+                <div id="adjust-card-wrapper" class="p-4 bg-slate-800 border border-slate-700 rounded-2xl hidden mt-4 max-w-sm space-y-3">
+                    <h3 class="text-xs font-bold uppercase text-slate-400">Corregir saldo al valor real actual:</h3>
+                    <div class="flex space-x-2">
+                        <input type="number" id="adjust-amount-input" placeholder="0" class="bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-xl text-xs w-full text-white focus:outline-none">
+                        <button onclick="saveBalanceAdjustment()" class="bg-indigo-600 text-white font-bold text-xs px-4 rounded-xl">Fijar Saldo</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PESTAÑA: TARJETAS Y CRÉDITOS -->
+            <div id="content-summary" class="space-y-6 hidden">
+                <div>
+                    <h2 class="text-xs font-black uppercase text-slate-400 mb-4">Mis Tarjetas de Crédito (Estado del Cupo)</h2>
+                    <div class="grid grid-cols-1 gap-6" id="cards-list"></div>
+                    
+                    <div id="adjust-credit-wrapper" class="p-5 bg-slate-800 border border-slate-700 rounded-2xl hidden mt-4 max-w-md space-y-4 shadow-xl">
+                        <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+                            <h3 id="adjust-credit-title" class="text-xs font-bold uppercase text-indigo-400">Configurar Parámetros Bancarios</h3>
+                            <button onclick="closeCreditAdjustment()" class="text-slate-400 hover:text-white text-sm font-bold">×</button>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div>
+                                <label class="text-slate-400 block mb-1 font-semibold">Cupo Total del Banco ($)</label>
+                                <input type="number" id="adjust-credit-limit-input" placeholder="0" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-white focus:outline-none font-mono">
+                            </div>
+                            <div>
+                                <label class="text-slate-400 block mb-1 font-semibold">Fecha Límite de Pago</label>
+                                <input type="text" id="adjust-credit-date-input" placeholder="Ej. Día 15 de cada mes" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-white focus:outline-none">
+                            </div>
+                        </div>
+                        <button onclick="saveCreditAdjustment()" class="w-full bg-indigo-600 text-white font-bold text-xs py-2.5 rounded-xl uppercase tracking-wider">Actualizar Datos de Tarjeta</button>
+                    </div>
+                </div>
+                <div class="border-t border-slate-800 pt-6">
+                    <h2 class="text-xs font-black uppercase text-slate-400 mb-4">Mis Créditos y Préstamos Aparte</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="loans-list"></div>
+                </div>
+            </div>
+
+            <!-- PESTAÑA: PLANES DE AHORRO -->
+            <div id="content-goals" class="space-y-6 hidden">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="p-4 bg-slate-800 rounded-2xl border border-slate-700 h-fit space-y-3">
+                        <h3 class="text-xs font-black uppercase text-slate-400">Nuevo Plan de Ahorro</h3>
+                        <div class="space-y-2 text-xs">
+                            <input type="text" id="gName" placeholder="¿Para qué estás ahorrando?" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-white focus:outline-none">
+                            <input type="number" id="gTarget" placeholder="¿Cuánto necesitas en total? ($)" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-white focus:outline-none">
+                            <input type="number" id="gAmountMonth" placeholder="¿Cuánto vas a aportar al mes? ($)" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-white focus:outline-none">
+                            <button onclick="createNewGoal()" class="w-full bg-indigo-600 py-2 rounded-xl font-bold mt-1 text-white">Iniciar Plan</button>
+                        </div>
+                    </div>
+                    <div class="md:col-span-2 space-y-3">
+                        <h3 class="text-xs font-black uppercase text-slate-400">Mis Objetivos de Ahorro</h3>
+                        <div class="space-y-4" id="goals-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PESTAÑA: HISTORIAL -->
+            <div id="content-history" class="space-y-3 hidden">
+                <h2 class="text-xs font-black uppercase text-slate-400 mb-2">Historial de lo que has anotado</h2>
+                <div class="space-y-2 max-h-[350px] overflow-y-auto pr-2" id="history-list"></div>
+            </div>
+
+            <!-- PESTAÑA: REPORTE MENSUAL FINANCIERO -->
+            <div id="content-report" class="space-y-6 hidden">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <h2 class="text-xs font-black uppercase text-indigo-400 tracking-wider">Análisis y Diagnóstico de Hábitos Financieros</h2>
+                    <span class="text-[10px] bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded-md font-mono">Mes Actual</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                    <div class="bg-slate-900/40 border border-slate-800 p-3 rounded-xl">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase block">Ingresos Totales</span>
+                        <span id="rep-total-income" class="text-lg font-black text-emerald-400 font-mono">$0</span>
+                    </div>
+                    <div class="bg-slate-900/40 border border-slate-800 p-3 rounded-xl">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase block">Gastos Totales</span>
+                        <span id="rep-total-expenses" class="text-lg font-black text-rose-400 font-mono">$0</span>
+                    </div>
+                    <div class="bg-slate-900/40 border border-slate-800 p-3 rounded-xl">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase block">Balance Neto</span>
+                        <span id="rep-net-balance" class="text-lg font-black text-white font-mono">$0</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <div class="bg-slate-900/20 border border-slate-800 p-4 rounded-2xl flex flex-col items-center justify-center min-h-[260px]">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase mb-4 tracking-wider">¿En qué gastas tu dinero?</span>
+                        <div class="w-full max-w-[220px] max-h-[220px]">
+                            <canvas id="expensesChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        <span class="text-[10px] font-bold text-indigo-400 uppercase block tracking-wider">💡 Diagnóstico de Hábitos Inteligente</span>
+                        <div id="report-insights" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAL: ANOTAR MOVIMIENTO -->
+    <div id="tx-modal" class="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-md p-6 rounded-2xl space-y-4 text-xs">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+                <h3 class="text-sm font-black uppercase tracking-wider">Anotar Movimiento</h3>
+                <button onclick="closeModal()" class="text-slate-400 text-lg hover:text-white font-bold">×</button>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-2 p-1 bg-slate-900 rounded-xl font-bold text-center">
+                <button id="btn-type-expense" onclick="changeTxType('expense')" class="py-1.5 rounded-lg bg-rose-500 text-white">Gasto</button>
+                <button id="btn-type-income" onclick="changeTxType('income')" class="py-1.5 rounded-lg text-slate-400">Ingreso</button>
+                <button id="btn-type-transfer" onclick="changeTxType('transfer')" class="py-1.5 rounded-lg text-slate-400">Traspaso</button>
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                  <label class="text-slate-400 block mb-1 font-bold">Monto ($)</label>
+                  <input type="number" id="tx-amount" placeholder="0" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-sm font-bold text-white focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div id="wrapper-pocket-from">
+                    <label id="label-pocket-from" class="text-slate-400 block mb-1 font-bold">¿De qué bolsillo sale?</label>
+                    <select id="tx-pocket-from" onchange="toggleCuotasField()" class="w-full bg-slate-900 border border-slate-700 px-2 py-2 rounded-xl text-white"></select>
+                  </div>
+                  <div id="wrapper-pocket-to" class="hidden">
+                    <label class="text-slate-400 block mb-1 font-bold">¿A qué bolsillo entra?</label>
+                    <select id="tx-pocket-to" class="w-full bg-slate-900 border border-slate-700 px-2 py-2 rounded-xl text-white"></select>
+                  </div>
+                </div>
+
+                <div id="wrapper-card-installments" class="hidden bg-indigo-950/40 p-3 border border-indigo-900 rounded-xl">
+                    <label class="text-indigo-300 block mb-1 font-bold">💳 Compra con Tarjeta: ¿A cuántas cuotas diferir?</label>
+                    <input type="number" id="tx-installments" value="1" min="1" max="48" class="w-24 bg-slate-900 border border-indigo-700 px-3 py-1.5 rounded-xl text-white text-xs font-bold font-mono focus:outline-none">
+                    <span class="text-[10px] text-slate-400 block mt-1">El sistema dividirá este gasto en partes iguales mensuales para cobrarte abonos controlados.</span>
+                </div>
+
+                <div>
+                  <label class="text-slate-400 block mb-1 font-bold">¿Qué es? (Descripción corta)</label>
+                  <input type="text" id="tx-description" placeholder="Ej. Compra de ropa, Almuerzo, Televisor..." class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-white focus:outline-none">
+                </div>
+
+                <button onclick="saveNewTransaction()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl mt-2 text-xs uppercase tracking-wider">Guardar Movimiento</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: REGISTRAR CRÉDITO APARTE -->
+    <div id="credit-modal" class="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-md p-6 rounded-2xl space-y-4 text-xs">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+                <h3 class="text-sm font-black uppercase tracking-wider">Registrar Crédito / Préstamo</h3>
+                <button onclick="closeCreditModal()" class="text-slate-400 text-lg hover:text-white font-bold">×</button>
+            </div>
+            
+            <div class="space-y-3">
+                <div>
+                  <label class="text-slate-400 block mb-1 font-bold">Nombre del Crédito</label>
+                  <input type="text" id="loan-name" placeholder="Ej. Préstamo de Libre Inversión, Moto, etc." class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-white focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="text-slate-400 block mb-1 font-bold">Monto Total Prestado ($)</label>
+                      <input type="number" id="loan-total" placeholder="0" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-white focus:outline-none">
+                    </div>
+                    <div>
+                      <label class="text-slate-400 block mb-1 font-bold">Valor de la Cuota ($)</label>
+                      <input type="number" id="loan-quota" placeholder="0" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-white focus:outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="text-slate-400 block mb-1 font-bold">Día de Pago Al Mes</label>
+                      <input type="number" id="loan-day" placeholder="Ej. 10" min="1" max="31" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-white focus:outline-none">
+                    </div>
+                    <div>
+                      <label class="text-slate-400 block mb-1 font-bold">Plazo en Meses</label>
+                      <input type="number" id="loan-months" placeholder="Ej. 12" class="w-full bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-white focus:outline-none">
+                    </div>
+                </div>
+
+                <button onclick="saveNewLoan()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl mt-2 text-xs uppercase tracking-wider">Registrar Crédito</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT PRINCIPAL -->
+    <script>
+        // --- BASE DE DATOS LOCAL ---
+        let pockets = [
+            { id: 'p1', name: 'Efectivo en Mano', type: 'cash', balance: 0 },
+            { id: 'p2', name: 'Mi Cuenta de Débito', type: 'debit', balance: 0 },
+            { id: 'p3', name: 'Tarjeta de Crédito Oro', type: 'credit', balance: 0, creditLimit: 0, payDate: 'Día 15 de cada mes' },
+            { id: 'p4', name: 'Mi Alcancía de Ahorros', type: 'savings', balance: 0 }
+        ];
+
+        let transactions = [];
+        let loans = [];
+        let goals = [];
+        let cardPurchases = []; 
+
+        let currentTxType = 'expense';
+        let currentPocketToAdjustId = null;
+        let lastSelectedPocketForGoal = {};
+        let myChartInstance = null;
+
+        function showAlert(msg) {
+            let box = document.getElementById('global-alert');
+            box.innerText = msg;
+            box.classList.remove('hidden');
+            setTimeout(() => box.classList.add('hidden'), 5000);
+        }
+
+        function toggleCuotasField() {
+            let pFrom = document.getElementById('tx-pocket-from').value;
+            let selectedPocket = pockets.find(p => p.name === pFrom);
+            let field = document.getElementById('wrapper-card-installments');
+            if (currentTxType === 'expense' && selectedPocket && selectedPocket.type === 'credit') {
+                field.classList.remove('hidden');
+            } else {
+                field.classList.add('hidden');
+            }
+        }
+
+        function calculateBalances() {
+            pockets.forEach(p => p.currentBalance = p.balance);
+
+            transactions.forEach(t => {
+                if (t.status === 'voided') return;
+                if (t.type === 'expense') {
+                    let p = pockets.find(p => p.name === t.pocketFrom);
+                    if (p) p.currentBalance -= t.amount;
+                } else if (t.type === 'income') {
+                    let p = pockets.find(p => p.name === t.pocketTo);
+                    if (p) p.currentBalance += t.amount;
+                } else if (t.type === 'transfer') {
+                    let pf = pockets.find(p => p.name === t.pocketFrom);
+                    let pt = pockets.find(p => p.name === t.pocketTo);
+                    if (pf) pf.currentBalance -= t.amount;
+                    if (pt) pt.currentBalance += t.amount;
+                }
+            });
+
+            cardPurchases.forEach(cp => {
+                if (cp.remainingInstallments > 0) {
+                    let card = pockets.find(p => p.id === cp.cardId);
+                    if (card) card.currentBalance -= cp.remainingAmount;
+                }
+            });
+
+            let moneyAvailable = 0;
+            let moneyBorrowed = 0;
+
+            pockets.forEach(p => {
+                if (p.type === 'credit') {
+                    if (p.currentBalance < 0) moneyBorrowed += Math.abs(p.currentBalance);
+                } else if (p.type !== 'savings') { 
+                    moneyAvailable += p.currentBalance;
+                }
+            });
+
+            let loanDebt = loans.reduce((sum, l) => sum + l.remainingAmount, 0);
+
+            document.getElementById('metric-available').innerText = `$${Math.round(moneyAvailable)}`;
+            document.getElementById('metric-borrowed').innerText = `$${Math.round(moneyBorrowed)}`;
+            document.getElementById('metric-loans').innerText = `$${Math.round(loanDebt)}`;
+        }
+
+        function renderAll() {
+            calculateBalances();
+            updateReportTab();
+
+            // 1. Bolsillos (CORREGIDO: REMOVIDO BOTÓN DE AJUSTE PARA ALCANCÍAS)
+            let pocketsHtml = '';
+            pockets.filter(p => p.type !== 'credit').forEach(p => {
+                pocketsHtml += `
+                    <div class="p-4 bg-slate-800 rounded-2xl border border-slate-700 flex justify-between items-center shadow-md">
+                        <div>
+                            <span class="font-bold text-xs block text-slate-400">${p.name} ${p.type === 'savings' ? '🔒' : ''}</span>
+                            <span class="text-xl font-black mt-1 block ${p.type === 'savings' ? 'text-indigo-400' : 'text-emerald-400'} font-mono">$${Math.round(p.currentBalance)}</span>
+                        </div>
+                        ${p.type !== 'savings' ? `
+                            <button onclick="openAdjustmentForm('${p.id}')" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg font-bold">Corregir Saldo</button>
+                        ` : '<span class="text-[10px] text-slate-500 font-medium italic">Gestión vía metas</span>'}
+                    </div>
+                `;
+            });
+            document.getElementById('pockets-list').innerHTML = pocketsHtml;
+
+            // 2. Tarjetas de Crédito
+            let cardsHtml = '';
+            pockets.filter(p => p.type === 'credit').forEach(card => {
+                let cupoOcupado = card.currentBalance < 0 ? Math.abs(card.currentBalance) : 0;
+                let cupoDisponible = card.creditLimit - cupoOcupado;
+
+                let purchasesListHtml = '';
+                let activePurchases = cardPurchases.filter(cp => cp.cardId === card.id && cp.remainingInstallments > 0);
+                
+                activePurchases.forEach(cp => {
+                    purchasesListHtml += `
+                        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
+                            <div>
+                                <span class="font-bold text-slate-200 block">${cp.description}</span>
+                                <span class="text-[10px] text-slate-400 block">Deuda pendiente: <strong class="text-rose-400 font-mono">$${Math.round(cp.remainingAmount)}</strong></span>
+                                <span class="text-[10px] text-slate-500 block">Faltan <strong class="text-indigo-400">${cp.remainingInstallments}</strong> cuotas de <strong class="text-slate-300 font-mono">$${Math.round(cp.installmentValue)}</strong></span>
+                            </div>
+                            <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+                                <select id="pocket-pay-source-${cp.id}" class="bg-slate-800 border border-slate-700 p-1 rounded text-[10px] text-white">
+                                    ${pockets.filter(p => p.type !== 'credit' && p.type !== 'savings').map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+                                </select>
+                                <button onclick="payInstallmentQuota('${cp.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black px-2.5 py-1.5 rounded-lg whitespace-nowrap">Abonar Cuota</button>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                if (activePurchases.length === 0) {
+                    purchasesListHtml = `<p class="text-[11px] text-slate-500 italic text-center py-2">No tienes compras a cuotas cargadas en esta tarjeta.</p>`;
+                }
+
+                cardsHtml += `
+                    <div class="p-5 bg-slate-800 border border-slate-700 rounded-2xl space-y-4 shadow-sm">
+                        <div class="flex justify-between items-center font-bold text-xs">
+                            <span class="text-indigo-300 text-base font-black">${card.name}</span>
+                            <span class="text-[9px] bg-rose-500/10 text-rose-400 px-2 py-0.5 rounded-full font-bold">LÍNEA DE CRÉDITO</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 text-center bg-slate-900/50 p-3 rounded-xl">
+                            <div>
+                                <span class="text-[9px] text-slate-400 block font-bold">Cupo Autorizado</span>
+                                <span class="text-sm font-mono font-black text-slate-300">$${Math.round(card.creditLimit)}</span>
+                            </div>
+                            <div>
+                                <span class="text-[9px] text-rose-400 block font-bold">Cupo Ocupado</span>
+                                <span class="text-sm font-mono font-black text-rose-400">$${Math.round(cupoOcupado)}</span>
+                            </div>
+                            <div>
+                                <span class="text-[9px] text-emerald-400 block font-bold">Cupo Disponible</span>
+                                <span class="text-sm font-mono font-black text-emerald-400">$${Math.round(cupoDisponible)}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <span class="text-[10px] font-bold uppercase text-slate-400 tracking-wider block">Seguimiento de Compras y Abonos:</span>
+                            <div class="space-y-2">${purchasesListHtml}</div>
+                        </div>
+
+                        <div class="flex justify-between text-[10px] text-slate-400 pt-2 border-t border-slate-700/50 items-center">
+                            <span>📅 Pagar antes del: <strong class="text-slate-200">${card.payDate}</strong></span>
+                            <button onclick="openCreditAdjustmentForm('${card.id}')" class="text-indigo-400 font-bold hover:underline text-xs">Ajustar Línea</button>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('cards-list').innerHTML = cardsHtml;
+
+            // 3. Créditos Aparte
+            let loansHtml = '';
+            loans.forEach(l => {
+                loansHtml += `
+                    <div class="p-4 bg-slate-800 border border-slate-700 rounded-2xl space-y-3 shadow-sm">
+                        <div class="flex justify-between items-center font-bold text-xs">
+                            <span class="text-amber-300 text-sm">${l.name}</span>
+                            <span class="text-[9px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full font-bold">CRÉDITO</span>
+                        </div>
+                        <div class="flex justify-between items-baseline">
+                            <span class="text-xs text-slate-400">Deuda Pendiente:</span>
+                            <span class="text-lg font-mono font-black text-amber-400">$${Math.round(l.remainingAmount)}</span>
+                        </div>
+                        <div class="text-[11px] bg-slate-900/40 p-2 rounded-xl space-y-1">
+                            <div class="flex justify-between text-slate-400">
+                                <span>Monto Inicial: $${Math.round(l.totalAmount)}</span>
+                                <span>Meses Restantes: <strong class="text-white">${l.monthsRemaining}</strong></span>
+                            </div>
+                            <div class="flex justify-between text-slate-400">
+                                <span>Cuota Mensual: $${Math.round(l.nextPaymentAmount)}</span>
+                                <span>📅 Día de pago: ${l.paymentDay}</span>
+                            </div>
+                        </div>
+                        <div class="pt-2 flex justify-end">
+                            ${l.remainingAmount > 0 ? `<button onclick="payLoanQuota('${l.id}')" class="bg-amber-500 text-slate-950 font-black px-3 py-1 rounded-xl text-[10px] hover:bg-amber-400">Registrar Pago de Cuota</button>` : `<span class="text-emerald-400 text-xs font-bold">🎉 ¡Deuda totalmente saldada!</span>`}
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('loans-list').innerHTML = loansHtml || '<p class="text-xs opacity-40">No tienes créditos registrados externos.</p>';
+
+            // 4. Ahorros
+            let goalsHtml = '';
+            goals.forEach(g => {
+                let pct = g.target > 0 ? (g.current / g.target) * 100 : 0;
+                let done = pct >= 100;
+                let lastUsedPocketName = lastSelectedPocketForGoal[g.id] || 'Mi Cuenta de Débito';
+
+                goalsHtml += `
+                    <div class="p-4 bg-slate-800 rounded-2xl border border-slate-700 space-y-3 shadow-sm">
+                        <div class="flex justify-between items-center text-xs font-bold">
+                            <span class="text-sm text-indigo-300 font-black">${g.name}</span>
+                            ${done ? `<span class="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">🎉 ¡Meta Completada!</span>` : `<span class="text-slate-400">Falta: ${Math.round(g.target - g.current)}</span>`}
+                        </div>
+                        <div class="space-y-1">
+                          <div class="flex justify-between text-[10px] text-slate-400 font-bold">
+                            <span>$${Math.round(g.current)} de $${Math.round(g.target)}</span>
+                            <span>${pct.toFixed(0)}%</span>
+                          </div>
+                          <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                            <div class="bg-indigo-500 h-2 rounded-full" style="width: ${Math.min(100, pct)}%"></div>
+                          </div>
+                        </div>
+                        
+                        <div class="pt-2 border-t border-slate-700/50 flex flex-col gap-2 w-full">
+                            ${!done ? `
+                            <div class="flex flex-col sm:flex-row gap-2 w-full items-stretch sm:items-center">
+                                <select id="pocket-source-${g.id}" onchange="rememberPocketSelection('${g.id}')" class="bg-slate-900 border border-slate-700 p-2 rounded-xl text-xs text-white flex-1 min-w-0">
+                                    ${pockets.filter(p => p.type !== 'credit' && p.type !== 'savings').map(p => {
+                                        let isSelected = p.name === lastUsedPocketName ? 'selected' : '';
+                                        return `<option value="${p.name}" ${isSelected}>${p.name} ($${Math.round(p.currentBalance)})</option>`;
+                                    }).join('')}
+                                </select>
+                                <button onclick="addGoalSaving('${g.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2 rounded-xl whitespace-nowrap shadow-sm active:scale-98 transition-all">
+                                    Aportar $${Math.round(g.amountPerMonth)}
+                                </button>
+                            </div>
+                            ` : ''}
+                            <div class="flex justify-end w-full pt-1">
+                                <button onclick="deleteSavingGoal('${g.id}')" class="text-rose-400 text-[11px] font-bold hover:underline transition-all">
+                                    ❌ Eliminar y Liberar Fondos
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('goals-list').innerHTML = goalsHtml || '<p class="text-xs opacity-50 text-center py-6">No has creado metas de ahorro.</p>';
+
+            // 5. Historial de Operaciones
+            let historyHtml = '';
+            transactions.forEach(t => {
+                let isV = t.status === 'voided';
+                historyHtml += `
+                    <div class="p-3 bg-slate-800 rounded-xl border border-slate-700 flex justify-between items-center text-xs shadow-sm ${isV ? 'opacity-40 line-through' : ''}">
+                        <div>
+                            <span class="font-bold text-sm block">${t.description}</span>
+                            <span class="text-[10px] text-slate-400 mt-0.5 block font-medium">${t.type.toUpperCase()} • ${t.pocketFrom ? 'Salió de ' + t.pocketFrom : ''} ${t.pocketTo ? '➔ Entró a ' + t.pocketTo : ''}</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="font-black font-mono text-sm ${t.type === 'income' ? 'text-emerald-400' : t.type === 'expense' ? 'text-rose-400' : 'text-indigo-400'}">
+                                ${t.type === 'income' ? '+' : t.type === 'expense' ? '-' : ''}$${Math.round(t.amount)}
+                            </span>
+                            <button onclick="toggleTransactionVoid('${t.id}')" class="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-[10px] font-bold">${isV ? 'Activar' : 'Anular'}</button>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('history-list').innerHTML = historyHtml || '<p class="text-xs opacity-50 text-center py-6">Aún no has anotado movimientos reales.</p>';
+
+            let optionsFrom = '';
+            let optionsTo = '';
+            pockets.forEach(p => {
+                optionsFrom += `<option value="${p.name}">${p.name} ($${Math.round(p.currentBalance)})</option>`;
+                if (p.type !== 'credit') optionsTo += `<option value="${p.name}">${p.name} ($${Math.round(p.currentBalance)})</option>`;
+            });
+            document.getElementById('tx-pocket-from').innerHTML = optionsFrom;
+            document.getElementById('tx-pocket-to').innerHTML = optionsTo;
+            toggleCuotasField();
+        }
+
+        function saveBalanceAdjustment() {
+            let rawValue = document.getElementById('adjust-amount-input').value;
+            let targetVal = rawValue.trim() === "" ? 0 : parseFloat(rawValue);
+
+            if (isNaN(targetVal)) return;
+            let p = pockets.find(p => p.id === currentPocketToAdjustId);
+            if (!p || p.type === 'savings') return; // Bloqueo de seguridad
+
+            let impact = 0;
+            transactions.forEach(t => {
+                if (t.status === 'voided') return;
+                if (t.type === 'expense' && t.pocketFrom === p.name) impact -= t.amount;
+                if (t.type === 'income' && t.pocketTo === p.name) impact += t.amount;
+                if (t.type === 'transfer') {
+                    if (t.pocketFrom === p.name) impact -= t.amount;
+                    if (t.pocketTo === p.name) impact += t.amount;
+                }
+            });
+
+            p.balance = targetVal - impact;
+            document.getElementById('adjust-card-wrapper').classList.add('hidden');
+            renderAll();
+        }
+
+        function deleteSavingGoal(id) {
+            let g = goals.find(item => item.id === id);
+            if (!g) return;
+
+            let dineroAcumulado = g.current;
+
+            if (dineroAcumulado > 0) {
+                transactions.unshift({
+                    id: 'tx_release_' + Date.now(),
+                    type: 'transfer',
+                    amount: dineroAcumulado,
+                    date: '2026-06-04',
+                    description: `Liberación de fondos: Cancelación de plan (${g.name}) 💸`,
+                    pocketFrom: 'Mi Alcancía de Ahorros',
+                    pocketTo: 'Mi Cuenta de Débito',
+                    status: 'active'
+                });
+                showAlert(`💸 Plan eliminado. Tus $${Math.round(dineroAcumulado)} ahorrados regresaron a tu dinero disponible real.`);
+            } else {
+                showAlert(`✅ Plan de ahorro vacío eliminado con éxito.`);
+            }
+
+            delete lastSelectedPocketForGoal[id];
+            goals = goals.filter(item => item.id !== id);
+            renderAll();
+        }
+
+        function updateReportTab() {
+            let totalIncome = 0;
+            let ordinaryExpenses = 0; 
+            let creditCardAbonos = 0; 
+            let loanPayments = 0;     
+            let transferToSavings = 0;
+
+            transactions.forEach(t => {
+                if (t.status === 'voided') return;
+                
+                if (t.type === 'income') {
+                    if (t.pocketFrom !== 'Mi Alcancía de Ahorros') totalIncome += t.amount;
+                } else if (t.type === 'expense') {
+                    if (t.description.includes("Abono de cuota de tarjeta:")) {
+                        creditCardAbonos += t.amount;
+                    } else if (t.description.includes("Abono de cuota de:")) {
+                        loanPayments += t.amount;
+                    } else {
+                        ordinaryExpenses += t.amount;
+                    }
+                } else if (t.type === 'transfer') {
+                    if (t.pocketTo === 'Mi Alcancía de Ahorros') {
+                        transferToSavings += t.amount;
+                    }
+                }
+            });
+
+            cardPurchases.forEach(cp => {
+                ordinaryExpenses += cp.totalAmount;
+            });
+
+            let totalExpensesSum = ordinaryExpenses + creditCardAbonos + loanPayments + transferToSavings;
+            let netBalance = totalIncome - totalExpensesSum;
+
+            document.getElementById('rep-total-income').innerText = `$${Math.round(totalIncome)}`;
+            document.getElementById('rep-total-expenses').innerText = `$${Math.round(totalExpensesSum)}`;
+            document.getElementById('rep-net-balance').innerText = `$${Math.round(netBalance)}`;
+
+            if (netBalance < 0) {
+                document.getElementById('rep-net-balance').className = "text-lg font-black text-rose-400 font-mono";
+            } else if (netBalance > 0) {
+                document.getElementById('rep-net-balance').className = "text-lg font-black text-emerald-400 font-mono";
+            } else {
+                document.getElementById('rep-net-balance').className = "text-lg font-black text-white font-mono";
+            }
+
+            let ctx = document.getElementById('expensesChart');
+            if (ctx) {
+                if (myChartInstance) {
+                    myChartInstance.destroy(); 
+                }
+
+                let chartData = [ordinaryExpenses, creditCardAbonos, loanPayments, transferToSavings];
+                if (totalExpensesSum === 0) chartData = [1, 0, 0, 0]; 
+
+                myChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Gastos Comunes', 'Abonos Tarjeta', 'Pago Créditos', 'Planes Ahorro'],
+                        datasets: [{
+                            data: chartData,
+                            backgroundColor: ['#f43f5e', '#ec4899', '#f59e0b', '#6366f1'],
+                            borderWidth: 2,
+                            borderColor: '#1e293b'
+                        }]
+                    },
+                    options: {
+                        plugins: { legend: { display: false } },
+                        cutout: '70%',
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+
+            let insightsHtml = '';
+
+            if (totalExpensesSum === 0 && totalIncome === 0) {
+                insightsHtml = `
+                    <div class="p-3 bg-slate-900/60 rounded-xl text-[11px] text-slate-400 italic text-center">
+                        Aún no registras movimientos este mes. Anota tus compras o ingresos ordinarios para generar tu diagnóstico de salud financiera.
+                    </div>
+                `;
+            } else {
+                if (netBalance < 0) {
+                    insightsHtml += `
+                        <div class="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-300 rounded-xl text-[11px] font-medium flex gap-2">
+                            <span>🚨</span>
+                            <span><strong>Alerta de Déficit:</strong> Estás gastando más dinero del que te ingresa ($${Math.round(Math.abs(netBalance))} en contra). Te recomendamos frenar de inmediato los gastos comunes innecesarios de bolsillo para proteger tu liquidez.</span>
+                        </div>
+                    `;
+                } else {
+                    let savingPercent = totalIncome > 0 ? (netBalance / totalIncome) * 100 : 0;
+                    insightsHtml += `
+                        <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 rounded-xl text-[11px] font-medium flex gap-2">
+                            <span>✅</span>
+                            <span><strong>Salud Financiera Estable:</strong> Mantienes un balance positivo de $${Math.round(netBalance)}. Tienes libre el ${savingPercent.toFixed(0)}% de tus ingresos totales de este mes. ¡Buen manejo!</span>
+                        </div>
+                    `;
+                }
+
+                let totalDeudasMes = creditCardAbonos + loanPayments;
+                if (totalDeudasMes > 0 && totalIncome > 0) {
+                    let debtPercent = (totalDeudasMes / totalIncome) * 100;
+                    if (debtPercent > 30) {
+                        insightsHtml += `
+                            <div class="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-xl text-[11px] font-medium flex gap-2">
+                                <span>⚠️</span>
+                                <span><strong>Alto Endeudamiento:</strong> Dedicas el ${debtPercent.toFixed(0)}% de tus ingresos mensuales exclusivamente a pagar deudas. Intenta no usar líneas de crédito adicionales hasta bajar este indicador por debajo del 30%.</span>
+                            </div>
+                        `;
+                    }
+                }
+
+                if (transferToSavings > 0) {
+                    insightsHtml += `
+                        <div class="p-3 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded-xl text-[11px] font-medium flex gap-2">
+                            <span>🔥</span>
+                            <span><strong>Construyendo Hábitos:</strong> Excelente. Has separado exitosamente $${Math.round(transferToSavings)} este mes blindándolo dentro de tus planes de ahorro. Esto te protege de caer en compras impulsivas.</span>
+                        </div>
+                    `;
+                }
+            }
+
+            document.getElementById('report-insights').innerHTML = insightsHtml;
+        }
+
+        function rememberPocketSelection(goalId) {
+            let selectedVal = document.getElementById(`pocket-source-${goalId}`).value;
+            lastSelectedPocketForGoal[goalId] = selectedVal;
+        }
+
+        function addGoalSaving(goalId) {
+            let g = goals.find(g => g.id === goalId);
+            if (!g) return;
+            
+            let sourcePocketName = document.getElementById(`pocket-source-${goalId}`).value;
+            lastSelectedPocketForGoal[goalId] = sourcePocketName;
+            
+            let sourcePocket = pockets.find(p => p.name === sourcePocketName);
+            let amt = g.amountPerMonth;
+
+            if (sourcePocket && sourcePocket.currentBalance < amt) {
+                showAlert(`❌ No tienes dinero suficiente en "${sourcePocketName}" para realizar este aporte.`);
+                return;
+            }
+
+            transactions.unshift({
+                id: 'tx_g_' + Date.now(),
+                type: 'transfer',
+                amount: amt,
+                date: '2026-06-04',
+                description: `Aporte a meta: ${g.name}`,
+                pocketFrom: sourcePocketName,
+                pocketTo: 'Mi Alcancía de Ahorros',
+                status: 'active'
+            });
+
+            g.current = Math.min(g.target, g.current + amt);
+            renderAll();
+            showAlert(`🔒 Aporte exitoso: Se movieron $${Math.round(amt)} a tu meta.`);
+        }
+
+        function saveCreditAdjustment() {
+            let card = pockets.find(p => p.id === currentPocketToAdjustId);
+            if (!card) return;
+            let rawLimit = document.getElementById('adjust-credit-limit-input').value;
+            let newDate = document.getElementById('adjust-credit-date-input').value;
+            let newLimit = rawLimit.trim() === "" ? 0 : parseFloat(rawLimit);
+
+            if (isNaN(newLimit) || newLimit < 0 || !newDate) {
+                alert('Ingresa parámetros válidos.');
+                return;
+            }
+            card.creditLimit = newLimit;
+            card.payDate = newDate;
+            closeCreditAdjustment();
+            renderAll();
+        }
+
+        function openAdjustmentForm(pocketId) {
+            currentPocketToAdjustId = pocketId;
+            let p = pockets.find(p => p.id === pocketId);
+            if (p) {
+                document.getElementById('adjust-amount-input').value = p.currentBalance;
+                document.getElementById('adjust-card-wrapper').classList.remove('hidden');
+            }
+        }
+
+        function openCreditAdjustmentForm(pocketId) {
+            currentPocketToAdjustId = pocketId;
+            let card = pockets.find(p => p.id === pocketId);
+            if (card) {
+                document.getElementById('adjust-credit-title').innerText = `Configurar: ${card.name}`;
+                document.getElementById('adjust-credit-limit-input').value = card.creditLimit;
+                document.getElementById('adjust-credit-date-input').value = card.payDate;
+                document.getElementById('adjust-credit-wrapper').classList.remove('hidden');
+            }
+        }
+
+        function closeCreditAdjustment() { document.getElementById('adjust-credit-wrapper').classList.add('hidden'); }
+
+        document.getElementById('tx-modal').addEventListener('click', function(e) { if(e.target === this) closeModal(); });
+        document.getElementById('credit-modal').addEventListener('click', function(e) { if(e.target === this) closeCreditModal(); });
+
+        function switchTab(tabId) {
+            ['summary', 'pockets', 'history', 'goals', 'report'].forEach(id => {
+                document.getElementById(`content-${id}`).classList.add('hidden');
+                document.getElementById(`tab-${id}`).classList.remove('bg-indigo-600', 'text-white');
+                document.getElementById(`tab-${id}`).classList.add('text-slate-400');
+            });
+            document.getElementById(`content-${tabId}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabId}`).classList.add('bg-indigo-600', 'text-white');
+            document.getElementById(`tab-${tabId}`).classList.remove('text-slate-400');
+            document.getElementById('adjust-card-wrapper').classList.add('hidden');
+            closeCreditAdjustment();
+            
+            if (tabId === 'report') {
+                updateReportTab();
+            }
+        }
+
+        function openModal() { document.getElementById('tx-modal').classList.remove('hidden'); }
+        function closeModal() { document.getElementById('tx-modal').classList.add('hidden'); }
+        function openCreditModal() { document.getElementById('credit-modal').classList.remove('hidden'); }
+        function closeCreditModal() { document.getElementById('credit-modal').classList.add('hidden'); }
+
+        function changeTxType(type) {
+            currentTxType = type;
+            ['expense', 'income', 'transfer'].forEach(t => {
+                document.getElementById(`btn-type-${t}`).className = 'py-1.5 rounded-lg text-slate-400';
+            });
+            let clr = type === 'expense' ? 'bg-rose-500' : type === 'income' ? 'bg-emerald-500' : 'bg-indigo-600';
+            document.getElementById(`btn-type-${type}`).className = `py-1.5 rounded-lg ${clr} text-white`;
+
+            document.getElementById('wrapper-pocket-from').className = type === 'income' ? 'hidden' : 'block';
+            document.getElementById('wrapper-pocket-to').className = type === 'expense' ? 'hidden' : 'block';
+            toggleCuotasField();
+        }
+
+        function saveNewTransaction() {
+            let amount = parseFloat(document.getElementById('tx-amount').value);
+            let desc = document.getElementById('tx-description').value;
+            let pFrom = document.getElementById('tx-pocket-from').value;
+            let pTo = document.getElementById('tx-pocket-to').value;
+            let installments = parseInt(document.getElementById('tx-installments').value) || 1;
+
+            if (isNaN(amount) || amount <= 0 || !desc) {
+                alert('Introduce valores correctos.');
+                return;
+            }
+
+            if (currentTxType !== 'income') {
+                let sourcePocket = pockets.find(p => p.name === pFrom);
+                if (sourcePocket) {
+                    if (sourcePocket.type === 'credit') {
+                        let deudaActual = sourcePocket.currentBalance < 0 ? Math.abs(sourcePocket.currentBalance) : 0;
+                        if (deudaActual + amount > sourcePocket.creditLimit) {
+                            showAlert(`❌ Sin cupo libre suficiente en la tarjeta.`);
+                            return;
+                        }
+
+                        cardPurchases.push({
+                            id: 'cp_' + Date.now(),
+                            cardId: sourcePocket.id,
+                            description: desc,
+                            totalAmount: amount,
+                            remainingAmount: amount,
+                            totalInstallments: installments,
+                            remainingInstallments: installments,
+                            installmentValue: amount / installments
+                        });
+
+                        closeModal();
+                        document.getElementById('tx-amount').value = '';
+                        document.getElementById('tx-description').value = '';
+                        renderAll();
+                        return; 
+                    } else if (sourcePocket.currentBalance < amount) {
+                        showAlert(`❌ Dinero insuficiente en "${pFrom}".`);
+                        return;
+                    }
+                }
+            }
+
+            transactions.unshift({
+                id: 'tx_' + Date.now(),
+                type: currentTxType,
+                amount: amount,
+                date: '2026-06-04',
+                description: desc,
+                pocketFrom: currentTxType !== 'income' ? pFrom : undefined,
+                pocketTo: currentTxType !== 'expense' ? pTo : undefined,
+                status: 'active'
+            });
+
+            closeModal();
+            document.getElementById('tx-amount').value = '';
+            document.getElementById('tx-description').value = '';
+            renderAll();
+        }
+
+        function payInstallmentQuota(purchaseId) {
+            let cp = cardPurchases.find(item => item.id === purchaseId);
+            if (!cp) return;
+
+            let sourcePocketId = document.getElementById(`pocket-pay-source-${purchaseId}`).value;
+            let realPocket = pockets.find(p => p.id === sourcePocketId);
+            let cuotaImporte = Math.min(cp.remainingAmount, cp.installmentValue);
+
+            if (realPocket && realPocket.currentBalance < cuotaImporte) {
+                showAlert(`❌ Operación denegada: Tu bolsillo "${realPocket.name}" no tiene fondos suficientes.`);
+                return;
+            }
+
+            transactions.unshift({
+                id: 'tx_pay_card_' + Date.now(),
+                type: 'expense',
+                amount: cuotaImporte,
+                date: '2026-06-04',
+                description: `Abono de cuota de tarjeta: ${cp.description}`,
+                pocketFrom: realPocket.name,
+                status: 'active'
+            });
+
+            cp.remainingAmount -= cuotaImporte;
+            cp.remainingInstallments = Math.max(0, cp.remainingInstallments - 1);
+
+            renderAll();
+            showAlert(`✅ Abono exitoso: Has pagado la cuota de $${Math.round(cuotaImporte)}.`);
+        }
+
+        function toggleTransactionVoid(id) {
+            let t = transactions.find(t => t.id === id);
+            if (t) t.status = t.status === 'voided' ? 'active' : 'voided';
+            renderAll();
+        }
+
+        function saveNewLoan() {
+            let name = document.getElementById('loan-name').value;
+            let total = parseFloat(document.getElementById('loan-total').value);
+            let quota = parseFloat(document.getElementById('loan-quota').value);
+            let day = parseInt(document.getElementById('loan-day').value);
+            let months = parseInt(document.getElementById('loan-months').value);
+
+            if (!name || isNaN(total) || total <= 0 || isNaN(quota) || quota <= 0) {
+                alert('Ingresa los valores correctos.');
+                return;
+            }
+
+            loans.push({
+                id: 'l_' + Date.now(),
+                name: name,
+                totalAmount: total,
+                remainingAmount: total,
+                nextPaymentAmount: quota,
+                paymentDay: day || 5,
+                monthsRemaining: months || Math.ceil(total / quota)
+            });
+
+            closeCreditModal();
+            document.getElementById('loan-name').value = '';
+            document.getElementById('loan-total').value = '';
+            document.getElementById('loan-quota').value = '';
+            document.getElementById('loan-day').value = '';
+            document.getElementById('loan-months').value = '';
+            renderAll();
+        }
+
+        function payLoanQuota(id) {
+            let loan = loans.find(l => l.id === id);
+            if (!loan) return;
+            let pay = Math.min(loan.remainingAmount, loan.nextPaymentAmount);
+            let sourceDeb = pockets.find(p => p.name === 'Mi Cuenta de Débito');
+            if (sourceDeb && sourceDeb.currentBalance < pay) {
+                showAlert(`❌ No tienes dinero suficiente en "Mi Cuenta de Débito".`);
+                return;
+            }
+            transactions.unshift({
+                id: 'tx_l_' + Date.now(),
+                type: 'expense',
+                amount: pay,
+                date: '2026-06-04',
+                description: `Abono de cuota de: ${loan.name}`,
+                pocketFrom: 'Mi Cuenta de Débito',
+                status: 'active'
+            });
+            loan.remainingAmount -= pay;
+            loan.monthsRemaining = Math.max(0, loan.monthsRemaining - 1);
+            renderAll();
+        }
+
+        function createNewGoal() {
+            let name = document.getElementById('gName').value;
+            let target = parseFloat(document.getElementById('gTarget').value);
+            let monthly = parseFloat(document.getElementById('gAmountMonth').value);
+            if (!name || isNaN(target) || target <= 0) { alert('Valores incorrectos.'); return; }
+            goals.push({ id: 'g_' + Date.now(), name: name, target: target, current: 0, amountPerMonth: monthly || 50 });
+            document.getElementById('gName').value = '';
+            document.getElementById('gTarget').value = '';
+            document.getElementById('gAmountMonth').value = '';
+            renderAll();
+        }
+
+        renderAll();
+    </script>
+    <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+</body>
+</html>
