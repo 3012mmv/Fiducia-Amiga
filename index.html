@@ -263,6 +263,21 @@
 
     <!-- SCRIPT PRINCIPAL -->
     <script>
+        // --- Persistencia de datos ---
+function saveData() {
+    localStorage.setItem('fiducia_pockets', JSON.stringify(pockets));
+    localStorage.setItem('fiducia_transactions', JSON.stringify(transactions));
+    localStorage.setItem('fiducia_goals', JSON.stringify(goals));
+    localStorage.setItem('fiducia_loans', JSON.stringify(loans));
+}
+
+function loadData() {
+    if(localStorage.getItem('fiducia_pockets')) pockets = JSON.parse(localStorage.getItem('fiducia_pockets'));
+    if(localStorage.getItem('fiducia_transactions')) transactions = JSON.parse(localStorage.getItem('fiducia_transactions'));
+    if(localStorage.getItem('fiducia_goals')) goals = JSON.parse(localStorage.getItem('fiducia_goals'));
+    if(localStorage.getItem('fiducia_loans')) loans = JSON.parse(localStorage.getItem('fiducia_loans'));
+}
+
         // --- BASE DE DATOS LOCAL ---
         let pockets = [
             { id: 'p1', name: 'Efectivo en Mano', type: 'cash', balance: 0 },
@@ -344,6 +359,7 @@
         }
 
         function renderAll() {
+            saveData();
             calculateBalances();
             updateReportTab();
 
